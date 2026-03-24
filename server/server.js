@@ -16,7 +16,7 @@ app.use(express.json());
 
 // Data automation
 const DATA_DIR = path.join(__dirname, 'data');
-const REQUIRED_FILES = ['correlations.json', 'drug_details.json', 'genes_data.json', 'drug_responses.json'];
+const REQUIRED_FILES = ['correlations.json', 'drug_details.json', 'genes_data.json', 'drug_responses.json', 'liver_comparison.json'];
 const SHOULD_REBUILD = process.argv.includes('--rebuild') || !fs.existsSync(DATA_DIR) || REQUIRED_FILES.some(f => !fs.existsSync(path.join(DATA_DIR, f)));
 
 if (SHOULD_REBUILD) {
@@ -27,6 +27,7 @@ if (SHOULD_REBUILD) {
     const rootDir = path.join(__dirname, '..');
     execSync('python3 analyze_genes.py', { cwd: rootDir, stdio: 'inherit' });
     execSync('python3 export_data.py', { cwd: rootDir, stdio: 'inherit' });
+    execSync('python3 liver_analysis.py', { cwd: rootDir, stdio: 'inherit' });
     console.log("Python pipeline completed successfully.");
   } catch (err) {
     console.error("Error running Python pipeline:", err.message);
@@ -38,6 +39,7 @@ const correlations = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'correlation
 const drugDetails = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'drug_details.json')));
 const genesData = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'genes_data.json')));
 const drugResponses = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'drug_responses.json')));
+const liverComparison = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'liver_comparison.json')));
 
 console.log("Data loaded. Starting server...");
 
@@ -62,6 +64,10 @@ app.get('/api/drug-responses/:drug', (req, res) => {
   } else {
     res.status(404).json({ error: "Drug response data not found" });
   }
+});
+
+app.get('/api/liver-comparison', (req, res) => {
+  res.json(liverComparison);
 });
 
 // Health check

@@ -7,13 +7,14 @@ import SensitivityCard from './components/SensitivityCard';
 import { 
   InteractionScatterChart, 
   CorrelationsBarChart, 
-  InteractionsHeatmap 
+  InteractionsHeatmap
 } from './components/Charts';
 import { 
   DrugRankingTable, 
   TargetClassInsights, 
   ComparativeDatabase 
 } from './components/Tables';
+import LiverComparisonChart from './components/LiverComparisonChart';
 
 const API_BASE = 'http://localhost:5001/api';
 
@@ -22,6 +23,7 @@ const App = () => {
     correlations: [],
     drugDetails: {},
     genesData: {},
+    liverComparison: null,
     status: { status: 'loading', version: '2.0.0', endpoint: API_BASE }
   });
   const [loading, setLoading] = useState(true);
@@ -38,10 +40,11 @@ const App = () => {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const [corrRes, detailsRes, genesRes, statusRes] = await Promise.all([
+        const [corrRes, detailsRes, genesRes, liverRes, statusRes] = await Promise.all([
           fetch(`${API_BASE}/correlations`),
           fetch(`${API_BASE}/drug-details`),
           fetch(`${API_BASE}/genes-data`),
+          fetch(`${API_BASE}/liver-comparison`),
           fetch(`${API_BASE}/status`)
         ]);
         
@@ -49,6 +52,7 @@ const App = () => {
           correlations: await corrRes.json(),
           drugDetails: await detailsRes.json(),
           genesData: await genesRes.json(),
+          liverComparison: await liverRes.json(),
           status: await statusRes.json()
         });
         setLoading(false);
@@ -121,14 +125,14 @@ const App = () => {
       .slice(0, 15)
       .map(c => c.drug);
     const uniqueDrugs = [...new Set(topDrugs)];
+    const genes = ['CRP', 'HNF1A', 'MYC', 'ERBB2'];
     return uniqueDrugs.map(drug => {
-      const crp = data.correlations.find(c => c.drug === drug && c.gene === 'CRP' && c.metric === selectedMetric);
-      const hnf1a = data.correlations.find(c => c.drug === drug && c.gene === 'HNF1A' && c.metric === selectedMetric);
-      return {
-        drug,
-        CRP: crp ? crp.spearman_r : 0,
-        HNF1A: hnf1a ? hnf1a.spearman_r : 0
-      };
+      const row = { drug };
+      genes.forEach(g => {
+        const corr = data.correlations.find(c => c.drug === drug && c.gene === g && c.metric === selectedMetric);
+        row[g] = corr ? corr.spearman_r : 0;
+      });
+      return row;
     });
   }, [data.correlations, selectedMetric]);
 
@@ -183,6 +187,7 @@ const App = () => {
         selectedGene={selectedGene} setSelectedGene={setSelectedGene}
         selectedMetric={selectedMetric} setSelectedMetric={setSelectedMetric}
         searchTerm={searchTerm} setSearchTerm={setSearchTerm}
+        inputExp={inputExp} setInputExp={setInputExp}
         systemStatus={{ ...data.status, endpoint: API_BASE }}
       />
 
@@ -196,16 +201,7 @@ const App = () => {
           selectedDrug={selectedDrug} 
         />
 
-        <section style={{display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: '2rem'}}>
-          <InteractionScatterChart 
-            chartData={chartData} 
-            regressionLine={regressionLine} 
-            prediction={prediction} 
-            inputExp={inputExp}
-            selectedGene={selectedGene}
-            selectedMetric={selectedMetric}
-            selectedDrug={selectedDrug}
-          />
+        <section style={{display: 'flex', flexDirection: 'column', gap: '2rem'}}>
           <SensitivityCard 
             currentCorr={currentCorr}
             selectedGene={selectedGene}
@@ -220,17 +216,6 @@ const App = () => {
           <InteractionsHeatmap heatmapData={heatmapData} />
         </section>
 
-        <InteractionScatterChart 
-          chartData={geneComparisonData} 
-          regressionLine={[]} 
-          prediction={null} 
-          inputExp={inputExp}
-          selectedGene={selectedGene}
-          selectedMetric={selectedMetric}
-          selectedDrug={selectedDrug}
-          title={`${selectedGene} vs Drug Response Comparison`}
-        />
-
         <section style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '2rem'}}>
           <DrugRankingTable 
             topRegressions={topGeneRegressions} 
@@ -239,6 +224,8 @@ const App = () => {
           />
           <TargetClassInsights targetClassHits={targetClassHits} selectedGene={selectedGene} />
         </section>
+
+        <LiverComparisonChart data={data.liverComparison} />
 
         <ComparativeDatabase 
           filteredCorrelations={filteredCorrelations}

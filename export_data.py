@@ -9,9 +9,9 @@ print("Exporting data for frontend...")
 significant = pd.read_csv('significant_correlations.csv')
 
 # 2. Extract gene expression data (small)
-expr_cols = [2, 6646, 7019, 7397]
+expr_cols = [2, 6646, 7019, 7397, 8167]
 expr_df = pd.read_csv('expression.csv', usecols=expr_cols)
-expr_df.columns = ['ModelID', 'CRP', 'HNF1A', 'MYC']
+expr_df.columns = ['ModelID', 'CRP', 'HNF1A', 'MYC', 'ERBB2']
 expr_df.dropna(inplace=True)
 # Handle duplicates by taking the mean for each ModelID
 expr_df = expr_df.groupby('ModelID').mean().reset_index()
@@ -25,7 +25,7 @@ with open('server/data/genes_data.json', 'w') as f:
     json.dump(genes_data, f)
 
 # 3. Calculate regression parameters for each significant correlation
-genes = ['CRP', 'HNF1A', 'MYC']
+genes = ['CRP', 'HNF1A', 'MYC', 'ERBB2']
 metrics = ['ic50', 'auc']
 drugs = significant['drug'].unique()
 
